@@ -30,8 +30,8 @@
 module OpenProject
   class Design
     DEFAULTS = {
-      'primary-color'                                        => "#3493B3",
-      'primary-color-dark'                                   => "#06799F",
+      'primary-color'                                        => "#1A67A3",
+      'primary-color-dark'                                   => "#0E568E",
       'alternative-color'                                    => "#35C53F",
       'body-font-family'                                     => "'Lato', 'Lucida Grande', Helvetica, Arial, sans-serif",
       'gray'                                                 => "#EAEAEA",
@@ -69,7 +69,7 @@ module OpenProject
       'header-drop-down-bg-color'                            => "#FFFFFF",
       'header-drop-down-border-color'                        => "#E0E0E0",
       'header-drop-down-item-font-color'                     => "$body-font-color",
-      'header-drop-down-item-font-hover-color'               => "#FFFFFF",
+      'header-drop-down-item-font-hover-color'               => "$body-font-color",
       'header-drop-down-projects-search-font-color'          => "$body-font-color",
       'header-drop-down-projects-search-bg-color'            => "#E0E0E0",
       'header-drop-down-projects-search-input-bg-color'      => "#F5F5F5",
@@ -85,10 +85,10 @@ module OpenProject
       'main-menu-item-border-color'                          => "#EAEAEA",
       'main-menu-item-border-width'                          => "1px",
       'main-menu-enable-toggle-highlighting'                 => "false",
-      'main-menu-bg-color'                                   => "#F8F8F8",
+      'main-menu-bg-color'                                   => "#3F4C56",
       'main-menu-bg-selected-background'                     => "rgba(0, 0, 0, 0.06)",
       'main-menu-bg-hover-background'                        => "rgba(0, 0, 0, 0.03)",
-      'main-menu-font-color'                                 => "#333333",
+      'main-menu-font-color'                                 => "#FFFFFF",
       'main-menu-hover-font-color'                           => "$main-menu-font-color",
       'main-menu-resizer-color'                              => "$primary-color",
       'main-menu-selected-font-color'                        => "$content-link-color",
