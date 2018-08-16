@@ -108,13 +108,14 @@ describe UserMailer, type: :mailer do
 
   describe '#work_package_added' do
     before do
-      UserMailer.work_package_added(recipient, journal, user).deliver_now
+      UserMailer.work_package_added(recipient, journal, user)
     end
 
     it_behaves_like 'mail is sent'
 
     it 'contains the WP subject in the mail subject' do
-      expect(ActionMailer::Base.deliveries.first.subject).to include(work_package.subject)
+      expect(Delayed::Job.count).to eq(1)
+      expect(ActionMailer::Base.deliveries).to be_empty
     end
 
     it_behaves_like 'does only send mails to author if permitted'
@@ -122,7 +123,7 @@ describe UserMailer, type: :mailer do
 
   describe '#work_package_updated' do
     before do
-      UserMailer.work_package_updated(recipient, journal, user).deliver_now
+      UserMailer.deliver_immediately!(:work_package_updated, recipient, journal, user)
     end
 
     it_behaves_like 'mail is sent'
@@ -133,7 +134,7 @@ describe UserMailer, type: :mailer do
   describe '#work_package_watcher_added' do
     let(:watcher_setter) { user }
     before do
-      UserMailer.work_package_watcher_added(work_package, recipient, watcher_setter).deliver_now
+      UserMailer.deliver_immediately!(:work_package_watcher_added, work_package, recipient, watcher_setter)
     end
 
     it_behaves_like 'mail is sent'
@@ -147,7 +148,7 @@ describe UserMailer, type: :mailer do
     let(:wiki_content) { FactoryBot.create(:wiki_content) }
 
     before do
-      UserMailer.wiki_content_added(recipient, wiki_content, user).deliver_now
+      UserMailer.deliver_immediately!(:wiki_content_added, recipient, wiki_content, user)
     end
 
     it_behaves_like 'mail is sent'
@@ -159,7 +160,7 @@ describe UserMailer, type: :mailer do
     let(:wiki_content) { FactoryBot.create(:wiki_content) }
 
     before do
-      UserMailer.wiki_content_updated(recipient, wiki_content, user).deliver_now
+      UserMailer.deliver_immediately!(:wiki_content_updated, recipient, wiki_content, user)
     end
 
     it_behaves_like 'mail is sent'
@@ -201,7 +202,7 @@ describe UserMailer, type: :mailer do
 
       subject do
         message_ids = [user, user_2].each_with_object([]) do |u, l|
-          l << UserMailer.work_package_updated(u, journal).message_id
+          l << UserMailer.deliver_immediately!(:work_package_updated, u, journal).message_id
         end
 
         message_ids.uniq.count

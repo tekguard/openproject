@@ -37,9 +37,8 @@ class DeliverNotificationJob < ApplicationJob
     # nothing to do if recipient was deleted in the meantime
     return unless recipient
 
-    mail = User.execute_as(recipient) { build_mail }
-    if mail
-      mail.deliver_now
+    User.execute_as(recipient) do
+      build_and_send_mail
     end
   end
 
@@ -48,12 +47,12 @@ class DeliverNotificationJob < ApplicationJob
   # To be implemented by subclasses.
   # Actual recipient and sender User objects are passed (always non-nil).
   # Returns a Mail::Message, or nil if no message should be sent.
-  def render_mail(recipient:, sender:)
+  def send_mail(recipient:, sender:)
     raise 'SubclassResponsibility'
   end
 
-  def build_mail
-    render_mail(recipient: recipient, sender: sender)
+  def build_and_send_mail
+    send_mail(recipient: recipient, sender: sender)
   rescue StandardError => e
     Rails.logger.error "#{self.class.name}: Unexpected error rendering a mail: #{e}"
     # not raising, to avoid re-schedule of DelayedJob; don't expect render errors to fix themselves

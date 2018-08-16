@@ -38,17 +38,42 @@ class UserMailer < BaseMailer
   # wrap in a lambda to allow changing at run-time
   default from: Proc.new { Setting.mail_from }
 
-  def test_mail(user)
+  ##
+  # Requests asynchronous jobs for the bang-counterparts of a method
+  # e.g., UserMailer.test_mail(user) will result in a DelayedJob that executes test_mail!(user)
+  def method_missing(method, *args)
+    target = immediate(method)
+
+    return super unless respond_to?(target)
+
+    # Request a job to send the immediate counterpart
+    # but only if we're sending mails at the moment
+    if ActionMailer::Base.perform_deliveries
+      Delayed::Job.enqueue MailUserJob.new(target, *args, current_user: User.current)
+      true
+    else
+      Rails.logger.info "Delayed mailer job #{method} cancelled because perform_deliveries is disabled."
+      false
+    end
+  end
+
+  def respond_to_missing?(method)
+    respond_to?(immediate(method)) || super
+  end
+
+  protected
+
+  def test_mail!(user)
     @welcome_url = url_for(controller: '/homescreen')
 
     headers['X-OpenProject-Type'] = 'Test'
 
     with_locale_for(user) do
-      mail to: "\"#{user.name}\" <#{user.mail}>", subject: 'OpenProject Test'
+      mail_now to: "\"#{user.name}\" <#{user.mail}>", subject: 'OpenProject Test'
     end
   end
 
-  def work_package_added(user, journal, author)
+  def work_package_added!(user, journal, author)
     User.execute_as user do
       work_package = journal.journable.reload
       @issue = work_package # instance variable is used in the view
@@ -64,7 +89,7 @@ class UserMailer < BaseMailer
     end
   end
 
-  def work_package_updated(user, journal, author = User.current)
+  def work_package_updated!(user, journal, author = User.current)
     User.execute_as user do
       work_package = journal.journable.reload
 
@@ -83,7 +108,7 @@ class UserMailer < BaseMailer
     end
   end
 
-  def work_package_watcher_added(work_package, user, watcher_setter)
+  def work_package_watcher_added!(work_package, user, watcher_setter)
     User.execute_as user do
       @issue = work_package
       @watcher_setter = watcher_setter
@@ -93,12 +118,12 @@ class UserMailer < BaseMailer
       references work_package, user
 
       with_locale_for(user) do
-        mail to: user.mail, subject: subject_for_work_package(work_package)
+        mail_now to: user.mail, subject: subject_for_work_package(work_package)
       end
     end
   end
 
-  def password_lost(token)
+  def password_lost!(token)
     return unless token.user # token's can have no user
 
     @token = token
@@ -111,11 +136,11 @@ class UserMailer < BaseMailer
     user = @token.user
     with_locale_for(user) do
       subject = t(:mail_subject_lost_password, value: Setting.app_title)
-      mail to: user.mail, subject: subject
+      mail_now to: user.mail, subject: subject
     end
   end
 
-  def copy_project_failed(user, source_project, target_project_name, errors)
+  def copy_project_failed!(user, source_project, target_project_name, errors)
     @source_project = source_project
     @target_project_name = target_project_name
     @errors = errors
@@ -128,11 +153,11 @@ class UserMailer < BaseMailer
     with_locale_for(user) do
       subject = I18n.t('copy_project.failed', source_project_name: source_project.name)
 
-      mail to: user.mail, subject: subject
+      mail_now to: user.mail, subject: subject
     end
   end
 
-  def copy_project_succeeded(user, source_project, target_project, errors)
+  def copy_project_succeeded!(user, source_project, target_project, errors)
     @source_project = source_project
     @target_project = target_project
     @errors = errors
@@ -146,11 +171,11 @@ class UserMailer < BaseMailer
     with_locale_for(user) do
       subject = I18n.t('copy_project.succeeded', target_project_name: target_project.name)
 
-      mail to: user.mail, subject: subject
+      mail_now to: user.mail, subject: subject
     end
   end
 
-  def news_added(user, news, author)
+  def news_added!(user, news, author)
     @news = news
 
     open_project_headers 'Type'    => 'News'
@@ -165,7 +190,7 @@ class UserMailer < BaseMailer
     end
   end
 
-  def user_signed_up(token)
+  def user_signed_up!(token)
     return unless token.user
 
     @token = token
@@ -178,11 +203,11 @@ class UserMailer < BaseMailer
     user = token.user
     with_locale_for(user) do
       subject = t(:mail_subject_register, value: Setting.app_title)
-      mail to: user.mail, subject: subject
+      mail_now to: user.mail, subject: subject
     end
   end
 
-  def news_comment_added(user, comment, author)
+  def news_comment_added!(user, comment, author)
     @comment = comment
     @news    = @comment.commented
 
@@ -198,7 +223,7 @@ class UserMailer < BaseMailer
     end
   end
 
-  def wiki_content_added(user, wiki_content, author)
+  def wiki_content_added!(user, wiki_content, author)
     @wiki_content = wiki_content
 
     open_project_headers 'Project'      => @wiki_content.project.identifier,
@@ -213,7 +238,7 @@ class UserMailer < BaseMailer
     end
   end
 
-  def wiki_content_updated(user, wiki_content, author)
+  def wiki_content_updated!(user, wiki_content, author)
     @wiki_content  = wiki_content
     @wiki_diff_url = url_for(controller: '/wiki',
                              action:     :diff,
@@ -234,7 +259,7 @@ class UserMailer < BaseMailer
     end
   end
 
-  def message_posted(user, message, author)
+  def message_posted!(user, message, author)
     @message     = message
     @message_url = topic_url(@message.root, r: @message.id, anchor: "message-#{@message.id}")
 
@@ -251,18 +276,18 @@ class UserMailer < BaseMailer
     end
   end
 
-  def account_activated(user)
+  def account_activated!(user)
     @user = user
 
     open_project_headers 'Type' => 'Account'
 
     with_locale_for(user) do
       subject = t(:mail_subject_register, value: Setting.app_title)
-      mail to: user.mail, subject: subject
+      mail_now to: user.mail, subject: subject
     end
   end
 
-  def account_information(user, password)
+  def account_information!(user, password)
     @user     = user
     @password = password
 
@@ -270,11 +295,11 @@ class UserMailer < BaseMailer
 
     with_locale_for(user) do
       subject = t(:mail_subject_register, value: Setting.app_title)
-      mail to: user.mail, subject: subject
+      mail_now to: user.mail, subject: subject
     end
   end
 
-  def account_activation_requested(admin, user)
+  def account_activation_requested!(admin, user)
     @user           = user
     @activation_url = url_for(controller: '/users',
                               action:     :index,
@@ -285,11 +310,11 @@ class UserMailer < BaseMailer
 
     with_locale_for(admin) do
       subject = t(:mail_subject_account_activation_request, value: Setting.app_title)
-      mail to: admin.mail, subject: subject
+      mail_now to: admin.mail, subject: subject
     end
   end
 
-  def reminder_mail(user, issues, days)
+  def reminder_mail!(user, issues, days)
     @issues = issues
     @days   = days
 
@@ -303,7 +328,7 @@ class UserMailer < BaseMailer
 
     with_locale_for(user) do
       subject = t(:mail_subject_reminder, count: @issues.size, days: @days)
-      mail to: user.mail, subject: subject
+      mail_now to: user.mail, subject: subject
     end
   end
 
@@ -312,11 +337,11 @@ class UserMailer < BaseMailer
   #
   # @param [String] user_email E-Mail of user who could not activate their account.
   # @param [User] admin Admin to be notified of this issue.
-  def activation_limit_reached(user_email, admin)
+  def activation_limit_reached!(user_email, admin)
     @email = user_email
 
     with_locale_for(admin) do
-      mail to: admin.mail, subject: t("mail_user_activation_limit_reached.subject")
+      mail_now to: admin.mail, subject: t("mail_user_activation_limit_reached.subject")
     end
   end
 
@@ -361,7 +386,7 @@ class UserMailer < BaseMailer
   #  - remove_self_notifications
   # might be refactored at a later time to be as generic as Interceptors
   def mail_for_author(author, headers = {}, &block)
-    message = mail headers, &block
+    message = mail_now headers, &block
 
     self.class.remove_self_notifications(message, author)
 
@@ -484,7 +509,7 @@ class DueIssuesReminder
                          .references(:projects)
                          .group_by(&:assigned_to)
     issues_by_assignee.each do |assignee, issues|
-      UserMailer.reminder_mail(assignee, issues, @days).deliver_now if assignee && assignee.active?
+      UserMailer.reminder_mail(assignee, issues, @days) if assignee && assignee.active?
     end
   end
 end

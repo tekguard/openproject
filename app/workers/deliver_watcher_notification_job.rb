@@ -35,10 +35,10 @@ class DeliverWatcherNotificationJob < DeliverNotificationJob
     super(recipient_id, watcher_setter_id)
   end
 
-  def render_mail(recipient:, sender:)
+  def send_mail(recipient:, sender:)
     return nil unless watcher
 
-    UserMailer.work_package_watcher_added(watcher.watchable, recipient, sender)
+    UserMailer.deliver_immediately!(:work_package_watcher_added, watcher.watchable, recipient, sender)
   end
 
   private

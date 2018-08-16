@@ -33,7 +33,7 @@ class DeliverWorkPackageNotificationJob < DeliverNotificationJob
     super(recipient_id, author_id)
   end
 
-  def render_mail(recipient:, sender:)
+  def send_mail(recipient:, sender:)
     return nil unless raw_journal # abort, assuming that the underlying WP was deleted
 
     journal = find_aggregated_journal
@@ -43,9 +43,9 @@ class DeliverWorkPackageNotificationJob < DeliverNotificationJob
     raise 'aggregated journal got outdated' unless journal
 
     if journal.initial?
-      UserMailer.work_package_added(recipient, journal, sender)
+      UserMailer.deliver_immediately!(:work_package_added, recipient, journal, sender)
     else
-      UserMailer.work_package_updated(recipient, journal, sender)
+      UserMailer.deliver_immediately!(:work_package_updated, recipient, journal, sender)
     end
   end
 

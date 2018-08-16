@@ -46,8 +46,8 @@ describe DeliverWorkPackageNotificationJob, type: :model do
 
   before do
     # make sure no actual calls make it into the UserMailer
-    allow(UserMailer).to receive(:work_package_added).and_return(double('mail', deliver_now: nil))
-    allow(UserMailer).to receive(:work_package_updated).and_return(double('mail', deliver_now: nil))
+    allow(UserMailer).to receive(:work_package_added)
+    allow(UserMailer).to receive(:work_package_updated)
   end
 
   it 'sends a mail' do
@@ -117,8 +117,6 @@ describe DeliverWorkPackageNotificationJob, type: :model do
       expect(UserMailer).to receive(:work_package_updated) do |_recipient, journal, _author|
         expect(journal.id).to eq expected.id
         expect(journal.notes_id).to eq expected.notes_id
-
-        double('mail', deliver_now: nil)
       end
       subject.perform
     end
@@ -129,7 +127,6 @@ describe DeliverWorkPackageNotificationJob, type: :model do
       before do
         expect(UserMailer).to receive(:work_package_added) do
           expect(User.current).to eql(recipient)
-          double('mail', deliver_now: nil)
         end
       end
 
@@ -149,10 +146,7 @@ describe DeliverWorkPackageNotificationJob, type: :model do
 
   describe 'exceptions during delivery' do
     before do
-      mail = double('mail')
-      allow(mail).to receive(:deliver_now).and_raise(SocketError)
-      expect(UserMailer).to receive(:work_package_added).and_return(mail)
-    end
+      expect(UserMailer).to receive(:work_package_added).and_raise(SocketError)
 
     it 'raises the error' do
       expect { subject.perform }.to raise_error(SocketError)

@@ -33,7 +33,29 @@ class BaseMailer < ActionMailer::Base
     super(headers, &block)
   end
 
+  def mail_now(headers = {}, &block)
+    mail(headers, &block).deliver_now
+  rescue StandardError => e
+    Rails.logger.error "Failed to deliver mail message: #{e} #{e.message}"
+    raise e
+  end
+
+  ##
+  # Execute the following mailer method immediately, not in a delayed job.
+  def deliver_immediately!(method, *args)
+    target = immediate(method)
+    raise NoMethodError.new("Method #{method} does not exist on mailer.") unless respond_to?(target)
+
+    send(target, *args)
+  end
+
   private
+
+  ##
+  # Get the immediate counterpart method
+  def immediate(method)
+    :"#{method}!"
+  end
 
   def default_formats_for_setting(format)
     format.html unless Setting.plain_text_mail?
